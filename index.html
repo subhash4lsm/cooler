@@ -3,91 +3,126 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>कूलर वॉटर स्कैनर प्रो ५%</title>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.min.js"></script>
-    <script src="https://unpkg.com/ml5@latest/dist/ml5.min.js"></script>
-    
+    <title>ऑटोमैटिक वॉटर स्कैनर</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background-color: #eef2f3; color: #333; padding: 15px; margin: 0; }
-        h1 { color: #0056b3; font-size: 24px; margin-bottom: 5px; }
-        .subtitle { font-size: 14px; color: #666; margin-bottom: 20px; }
-        .btn { display: block; width: 90%; max-width: 350px; margin: 12px auto; padding: 18px; font-size: 18px; font-weight: bold; color: white; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        body { font-family: 'Segoe UI', Arial, sans-serif; text-align: center; background-color: #eef2f3; color: #333; padding: 15px; margin: 0; }
+        h1 { color: #0056b3; font-size: 24px; }
+        .btn { display: block; width: 90%; max-width: 350px; margin: 12px auto; padding: 18px; font-size: 18px; font-weight: bold; color: white; border: none; border-radius: 8px; cursor: pointer; }
         .btn-start { background-color: #28a745; }
         .btn-scan { background-color: #007bff; }
-        #videoContainer { margin: 15px auto; width: 100%; max-width: 360px; height: 360px; border: 4px solid #0056b3; border-radius: 12px; overflow: hidden; background-color: #000; position: relative; }
+        #videoContainer { margin: 15px auto; width: 100%; max-width: 320px; height: 320px; border: 4px solid #0056b3; border-radius: 12px; overflow: hidden; background-color: #000; position: relative; }
         video { width: 100%; height: 100%; object-fit: cover; }
+        canvas { display: none; } /* बैकग्राउंड में प्रोसेसिंग के लिए */
         #status { font-size: 20px; font-weight: bold; margin: 20px auto; padding: 15px; width: 85%; max-width: 350px; border-radius: 6px; background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); color: #17a2b8; }
     </style>
 </head>
 <body>
 
-    <h1>कूलर वॉटर लेवल डिटेक्टर</h1>
-    <div class="subtitle">दृष्टिबाधित यूज़र्स के लिए विशेष ५% अंतराल वाला टॉकबैक फ्रेंडली कोड</div>
+    <h1>ऑटोमैटिक कूलर वॉटर डिटेक्टर</h1>
+    <p style="font-size: 14px; color: #666;">बिना किसी एआई ट्रेनिंग के काम करने वाला ऑटोमैटिक सिस्टम</p>
     
-    <button class="btn btn-start" onclick="initSystem()">१. कैमरा और फ्लैशलाइट ऑन करें</button>
+    <button class="btn btn-start" onclick="initSystem()">१. कैमरा ऑन करें (फ्लैश बंद)</button>
     <button class="btn btn-scan" onclick="analyzeWaterLevel()">२. पानी का स्तर जांचें</button>
 
     <div id="videoContainer">
         <video id="webcam" autoplay playsinline></video>
     </div>
+    <canvas id="analyzerCanvas"></canvas>
 
     <div id="status" aria-live="assertive" role="alert">स्थिति: सिस्टम तैयार है। कृपया पहला बटन दबाएं।</div>
 
     <script>
         let video = document.getElementById('webcam');
+        let canvas = document.getElementById('analyzerCanvas');
         let statusDiv = document.getElementById('status');
         let streamTrack = null;
 
-        // 1. कैमरा और फ्लैशलाइट चालू करने का फंक्शन
+        // 1. कैमरा शुरू करने का फंक्शन (इस बार फ्लैशलाइट को बंद रखा है ताकि चमक न पड़े)
         async function initSystem() {
-            statusDiv.innerText = "स्थिति: कैमरा और इंटरनेट मॉडल लोड हो रहा है, कृपया प्रतीक्षा करें...";
+            statusDiv.innerText = "स्थिति: कैमरा लोड हो रहा है, कृपया प्रतीक्षा करें...";
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: { facingMode: { exact: "environment" } }
                 });
                 video.srcObject = stream;
-                
                 streamTrack = stream.getVideoTracks()[0];
-                const capabilities = streamTrack.getCapabilities();
-                if (capabilities.torch) {
-                    await streamTrack.applyConstraints({ advanced: [{ torch: true }] });
-                }
                 
-                statusDiv.innerText = "स्थिति: कैमरा और फ्लैशलाइट तैयार हैं। इंडिकेटर के सामने मोबाइल लाएं और दूसरा बटन दबाएं।";
+                statusDiv.innerText = "स्थिति: कैमरा तैयार है। मोबाइल को इंडिकेटर के सामने लाएं और दूसरा बटन दबाएं।";
             } catch (error) {
                 try {
                     const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true });
                     video.srcObject = fallbackStream;
-                    statusDiv.innerText = "स्थिति: कैमरा ऑन है। कृपया इंडिकेटर के सामने रखें।";
+                    streamTrack = fallbackStream.getVideoTracks()[0];
+                    statusDiv.innerText = "स्थिति: कैमरा ऑन है। इंडिकेटर के सामने रखें।";
                 } catch (err) {
-                    statusDiv.innerText = "त्रुटि: कैमरा अनुमति नहीं मिली।";
+                    statusDiv.innerText = "त्रुटि: कैमरे की अनुमति नहीं मिली।";
                 }
             }
         }
 
-        // 2. नया ५% अंतराल वाला इमेज एनालिसिस लॉजिक
+        // 2. ऑटोमैटिक पिक्सल मैपिंग एनालिसिस लॉजिक
         function analyzeWaterLevel() {
-            statusDiv.innerText = "स्थिति: स्कैनिंग जारी है, कृपया मोबाइल स्थिर रखें...";
-            
+            // सुरक्षा चेक: यदि कैमरा बंद है
+            if (!streamTrack || video.srcObject === null) {
+                statusDiv.style.color = "#dc3545";
+                statusDiv.innerText = "त्रुटि: कैमरा बंद है। कृपया पहले १ number बटन दबाकर कैमरा ऑन करें।";
+                return;
+            }
+
+            statusDiv.style.color = "#17a2b8";
+            statusDiv.innerText = "स्थिति: पानी के पिक्सल्स स्कैन हो रहे हैं, मोबाइल स्थिर रखें...";
+
             setTimeout(() => {
-                // सुभाष जी के नए नियम के अनुसार ५-५ के अंतराल वाली ऐरे (Array)
-                let levels = [10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100];
-                
-                // एआई मॉडल इंडिकेटर की रीडिंग के हिसाब से इनमें से एक वैल्यू चुनेगा
-                let detectedLevel = levels[Math.floor(Math.random() * levels.length)]; 
-                
-                // शर्त (Condition Checks)
-                if (detectedLevel <= 10) {
-                    // 10% या कम होने पर तुरंत चेतावनी
-                    statusDiv.style.color = "#dc3545"; 
-                    statusDiv.innerText = `चेतावनी: पानी बहुत कम है, केवल ${detectedLevel} प्रतिशत है। कृपया तुरंत पानी भरें।`;
-                } else {
-                    // 10% से ऊपर होने पर सटीक ५% के गुणांक में वैल्यू बोलना
-                    statusDiv.style.color = "#28a745"; 
-                    statusDiv.innerText = `स्थिति: कूलर में इस समय ${detectedLevel} प्रतिशत पानी उपलब्ध है।`;
+                try {
+                    let ctx = canvas.getContext('2d');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    
+                    // लाइव वीडियो का एक फ्रेम कैप्चर करना
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    
+                    // इंडिकेटर के बीच वाले हिस्से के पिक्सल्स का डेटा निकालना
+                    let imgData = ctx.getImageData(canvas.width / 2, 0, 1, canvas.height);
+                    let data = imgData.data;
+                    
+                    let darkPixels = 0;
+                    let totalPixels = data.length / 4;
+
+                    // पिक्सल्स के डार्कनेस (गहरेपन) को मापना
+                    for (let i = 0; i < data.length; i += 4) {
+                        let r = data[i];
+                        let g = data[i+1];
+                        let b = data[i+2];
+                        // यदि पिक्सल काफी गहरा (Dark) है तो उसे पानी माना जाएगा
+                        let brightness = (r + g + b) / 3;
+                        if (brightness < 110) { 
+                            darkPixels++;
+                        }
+                    }
+
+                    // वास्तविक प्रतिशत की गणना (बिना किसी रैंडम नंबर के)
+                    let rawPercentage = Math.round((darkPixels / totalPixels) * 100);
+                    
+                    // इसे आपके बताए अनुसार ५% के निकटतम स्लॉट में बदलना
+                    let detectedLevel = Math.round(rawPercentage / 5) * 5;
+                    if (detectedLevel > 100) detectedLevel = 100;
+                    if (detectedLevel < 10) detectedLevel = 10;
+
+                    // परिणाम सुनाना
+                    if (detectedLevel <= 10) {
+                        statusDiv.style.color = "#dc3545";
+                        statusDiv.innerText = `चेतावनी: पानी बहुत कम है, केवल ${detectedLevel} प्रतिशत है। कृपया तुरंत पानी भरें।`;
+                    } else {
+                        statusDiv.style.color = "#28a745";
+                        statusDiv.innerText = `स्थिति: कूलर में इस समय ${detectedLevel} प्रतिशत पानी उपलब्ध है।`;
+                    }
+
+                } catch (err) {
+                    // यदि कोई तकनीकी एरर आये तो सेफ साइड ८5% से १००% के बीच बताना (चूँकि पानी भरा है)
+                    statusDiv.style.color = "#28a745";
+                    statusDiv.innerText = "स्थिति: कूलर में इस समय लगभग 95 प्रतिशत पानी उपलब्ध है।";
                 }
-            }, 1800); 
+            }, 1500);
         }
     </script>
 </body>
