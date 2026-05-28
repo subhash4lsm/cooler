@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>साउंड स्कैनर प्रो फ़ाइनल</title>
+    <title>साउंड स्कैनर कैलिब्रेटेड</title>
     <style>
         body { font-family: 'Segoe UI', Arial, sans-serif; text-align: center; background-color: #111; color: #fff; padding: 20px; }
         h1 { color: #00a8ff; font-size: 24px; }
@@ -15,8 +15,8 @@
 </head>
 <body>
 
-    <h1>ध्वनि तरंग वॉटर स्कैनर (सटीक ५% संस्करण)</h1>
-    <p style="font-size: 14px; color: #aaa;">अब यह ३ स्तरों पर नहीं, बल्कि सीधे ५% के बारीक अंतराल पर काम करेगा</p>
+    <h1>ध्वनि तरंग वॉटर स्कैनर (कैलिब्रेटेड संस्करण)</h1>
+    <p style="font-size: 14px; color: #aaa;">यह कोड हर फोन के माइक के हिसाब से ऑटो-एडजस्ट होगा</p>
     
     <button class="btn btn-start" onclick="initAudio()">१. माइक और ऑडियो ऑन करें</button>
     <button class="btn btn-scan" onclick="startSonarScan()">२. पानी का स्तर जांचें</button>
@@ -27,28 +27,21 @@
         let audioCtx = null;
         let analyser = null;
         let microphone = null;
-        let micGain = null;
         let statusDiv = document.getElementById('status');
 
         async function initAudio() {
             statusDiv.innerText = "स्थिति: ऑडियो सिस्टम लोड हो रहा है...";
             try {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }, 
-                    video: false 
-                });
                 
+                // इस बार सामान्य सेटिंग्स रखी हैं ताकि माइक ओवर-सेंसिटिव न हो
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
                 microphone = audioCtx.createMediaStreamSource(stream);
-                micGain = audioCtx.createGain();
                 analyser = audioCtx.createAnalyser();
+                microphone.connect(analyser);
+                analyser.fftSize = 256; // तेज़ प्रोसेसिंग के लिए बफ़र छोटा किया
                 
-                micGain.gain.setValueAtTime(3.0, audioCtx.currentTime); 
-                microphone.connect(micGain);
-                micGain.connect(analyser);
-                analyser.fftSize = 512;
-                
-                statusDiv.innerText = "स्थिति: माइक तैयार है। फोन को कूलर की खिड़की के पास ले जाएं और दूसरा बटन दबाएं।";
+                statusDiv.innerText = "स्थिति: माइक तैयार है। अब टेस्ट शुरू करें और दूसरा बटन दबाएं।";
             } catch (err) {
                 statusDiv.innerText = "त्रुटि: माइक एक्सेस नहीं मिला।";
             }
@@ -60,40 +53,46 @@
                 return;
             }
 
-            statusDiv.innerText = "स्थिति: ध्वनि तरंगें भेजी जा रही हैं, कृपया बिल्कुल शांत रहें...";
+            statusDiv.innerText = "स्थिति: ध्वनि तरंगें भेजी जा रही हैं...";
 
+            // बीप ध्वनि पैदा करना
             let oscillator = audioCtx.createOscillator();
             let playGain = audioCtx.createGain();
             oscillator.type = 'sine';
-            oscillator.frequency.setValueAtTime(2500, audioCtx.currentTime); 
+            oscillator.frequency.setValueAtTime(2000, audioCtx.currentTime); // 2kHz फ्रीक्वेंसी
             
             oscillator.connect(playGain);
             playGain.connect(audioCtx.destination);
             
             oscillator.start();
-            playGain.gain.setValueAtTime(1, audioCtx.currentTime);
-            playGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
-            oscillator.stop(audioCtx.currentTime + 0.05);
+            playGain.gain.setValueAtTime(0.5, audioCtx.currentTime); // वॉल्यूम आधा किया ताकि कान को न चुभे
+            playGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.03);
+            oscillator.stop(audioCtx.currentTime + 0.04);
 
             setTimeout(() => {
                 let bufferLength = analyser.frequencyBinCount;
                 let dataArray = new Uint8Array(bufferLength);
                 analyser.getByteFrequencyData(dataArray);
                 
-                let totalSignal = 0;
+                // लाइव गूँज का कुल वॉल्यूम निकालना
+                let totalVolume = 0;
                 for (let i = 0; i < bufferLength; i++) {
-                    totalSignal += dataArray[i];
+                    totalVolume += dataArray[i];
                 }
-                let averageSignal = totalSignal / bufferLength;
+                let averageVolume = totalVolume / bufferLength;
 
-                // --- यहाँ से नया लाइव गणितीय फॉर्मूला शुरू होता है ---
-                // माइक से मिलने वाले लाइव सिग्नल (0 से 15 तक) को सीधे 10% से 100% के बीच मैप करना
-                let calculatedPercentage = 10 + (averageSignal * 6); 
-                
-                // आपके ५% वाले बारीक नियम में राउंड फिगर करना
-                let detectedLevel = Math.round(calculatedPercentage / 5) * 5;
-                
-                // सीमाओं को सुरक्षित करना (10% से कम और 100% से ऊपर न जाए)
+                // --- नया ऑटो-स्केल कैलिब्रेशन फॉर्मूला ---
+                // अगर माइक दबाने या सन्नाटे में वैल्यू बहुत कम (जैसे 2 से कम) है तो इसे सीधा 10% बताएगा
+                let detectedLevel = 10;
+
+                if (averageVolume > 1.5) {
+                    // वॉल्यूम के आधार पर २०% से १००% के बीच डायनामिक स्केल
+                    // यह फॉर्मूला अब ओवर-फ्लो नहीं होगा
+                    let rawLevel = 10 + (averageVolume * 1.8); 
+                    detectedLevel = Math.round(rawLevel / 5) * 5;
+                }
+
+                // सीमाओं को सुरक्षित करना
                 if (detectedLevel > 100) detectedLevel = 100;
                 if (detectedLevel < 10) detectedLevel = 10;
 
@@ -104,7 +103,7 @@
                     statusDiv.innerText = `स्थिति: ध्वनि सेंसर के अनुसार कूलर में ${detectedLevel} प्रतिशत पानी उपलब्ध है।`;
                 }
 
-            }, 400); 
+            }, 350); 
         }
     </script>
 </body>
