@@ -3,107 +3,228 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>साउंड स्कैनर कैलिब्रेटेड</title>
+    <title>एक्सेसिबिलिटी महा-टूलकिट</title>
     <style>
-        body { font-family: 'Segoe UI', Arial, sans-serif; text-align: center; background-color: #111; color: #fff; padding: 20px; }
-        h1 { color: #00a8ff; font-size: 24px; }
-        .btn { display: block; width: 90%; max-width: 350px; margin: 20px auto; padding: 22px; font-size: 20px; font-weight: bold; color: white; border: none; border-radius: 12px; cursor: pointer; }
-        .btn-start { background-color: #28a745; box-shadow: 0 4px 15px rgba(40,167,69,0.4); }
-        .btn-scan { background-color: #007bff; box-shadow: 0 4px 15px rgba(0,123,255,0.4); }
-        #status { font-size: 22px; font-weight: bold; margin: 30px auto; padding: 20px; width: 85%; max-width: 350px; border-radius: 8px; background-color: #222; border: 2px solid #00a8ff; color: #00e676; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; text-align: center; background-color: #f4f7f6; color: #333; padding: 15px; margin: 0; }
+        h1 { color: #0056b3; font-size: 24px; margin-bottom: 5px; }
+        .subtitle { font-size: 14px; color: #666; margin-bottom: 20px; }
+        .section-box { background: white; border: 2px solid #ddd; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        h2 { font-size: 18px; color: #333; margin-top: 0; text-align: left; border-bottom: 2px solid #0056b3; padding-bottom: 5px; }
+        .btn { display: block; width: 100%; max-width: 300px; margin: 10px auto; padding: 15px; font-size: 18px; font-weight: bold; color: white; border: none; border-radius: 8px; cursor: pointer; }
+        .btn-blue { background-color: #007bff; }
+        .btn-green { background-color: #28a745; }
+        .btn-orange { background-color: #fd7e14; }
+        .btn-purple { background-color: #6f42c1; }
+        .input-box { width: 90%; max-width: 300px; padding: 12px; font-size: 16px; border: 2px solid #ccc; border-radius: 6px; margin: 5px auto; display: block; }
+        #status-display { font-size: 20px; font-weight: bold; color: #0056b3; margin: 15px auto; padding: 15px; background: #e9ecef; border-radius: 8px; min-height: 40px; display: flex; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
 
-    <h1>ध्वनि तरंग वॉटर स्कैनर (कैलिब्रेटेड संस्करण)</h1>
-    <p style="font-size: 14px; color: #aaa;">यह कोड हर फोन के माइक के हिसाब से ऑटो-एडजस्ट होगा</p>
-    
-    <button class="btn btn-start" onclick="initAudio()">१. माइक और ऑडियो ऑन करें</button>
-    <button class="btn btn-scan" onclick="startSonarScan()">२. पानी का स्तर जांचें</button>
+    <h1>दिव्यांग साथी टूलकिट</h1>
+    <div class="subtitle">रोज़मर्रा के कार्यों को आसान बनाने के लिए ६ डिजिटल टूल्स</div>
 
-    <div id="status" aria-live="assertive" role="alert">स्थिति: सिस्टम तैयार है। कृपया पहला बटन दबाएं।</div>
+    <div id="status-display" aria-live="assertive" role="alert">टूलकिट तैयार है। कृपया कोई भी विकल्प चुनें।</div>
+
+    <div class="section-box">
+        <h2>१. स्मार्ट वॉइस नोटपैड</h2>
+        <button class="btn btn-blue" onclick="startVoiceRecognition()">🎤 बोलकर टाइप करें</button>
+        <textarea id="notepad-text" class="input-box" rows="4" placeholder="आपका बोला हुआ टेक्स्ट यहाँ दिखाई देगा..."></textarea>
+        <button class="btn btn-green" onclick="shareNotes()">💬 यह नोट व्हाट्सएप पर भेजें</button>
+    </div>
+
+    <div class="section-box">
+        <h2>२. बिना नंबर सेव किए व्हाट्सएप मैसेंजर</h2>
+        <input id="whatsapp-number" class="input-box" type="tel" placeholder="91 के साथ मोबाइल नंबर डालें (जैसे 9198283xxxxx)">
+        <button class="btn btn-purple" onclick="openWhatsAppDirect()">🚀 सीधे चैट खोलें</button>
+    </div>
+
+    <div class="section-box">
+        <h2>३. फ़ोन की स्थिति जानें</h2>
+        <button class="btn btn-orange" onclick="checkDeviceStatus()">🔋 बैटरी और इंटरनेट स्टेटस सुनें</button>
+    </div>
+
+    <div class="section-box">
+        <h2>४. क्विक टॉर्च कंट्रोल</h2>
+        <button class="btn btn-blue" onclick="toggleFlashlight(true)">🔦 टॉर्च ऑन करें</button>
+        <button class="btn btn-orange" onclick="toggleFlashlight(false)">❌ टॉर्च बंद करें</button>
+    </div>
+
+    <div class="section-box">
+        <h2>५. टॉकबैक टेक्स्ट क्लीनर</h2>
+        <input id="dirty-text" class="input-box" type="text" placeholder="फालतू सिंबल वाला टेक्स्ट यहाँ पेस्ट करें">
+        <button class="btn btn-green" onclick="cleanTextForTalkback()">✨ टेक्स्ट साफ़ करें</button>
+    </div>
+
+    <div class="section-box">
+        <h2>६. आज का प्रेरणादायक सुविचार</h2>
+        <button class="btn btn-purple" onclick="getRandomThought()">☀️ आज का सुविचार सुनें</button>
+    </div>
 
     <script>
-        let audioCtx = null;
-        let analyser = null;
-        let microphone = null;
-        let statusDiv = document.getElementById('status');
+        const statusDiv = document.getElementById('status-display');
 
-        async function initAudio() {
-            statusDiv.innerText = "स्थिति: ऑडियो सिस्टम लोड हो रहा है...";
+        // ---- १. वॉइस नोटपैड लॉजिक ----
+        let recognition;
+        function startVoiceRecognition() {
+            window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!window.SpeechRecognition) {
+                statusDiv.innerText = "त्रुटि: आपके ब्राउज़र में वॉइस टाइपिंग सपोर्ट नहीं है।";
+                return;
+            }
+            recognition = new SpeechRecognition();
+            recognition.lang = 'hi-IN'; // हिंदी भाषा सेट की
+            recognition.interimResults = false;
+            
+            statusDiv.innerText = "सुन रहा हूँ... कृपया बोलिए...";
+            
+            recognition.onresult = function(event) {
+                const text = event.results[0][0].transcript;
+                document.getElementById('notepad-text').value = text;
+                statusDiv.innerText = "टाइप हुआ टेक्स्ट: " + text;
+            };
+            
+            recognition.onerror = function() {
+                statusDiv.innerText = "त्रुटि: आवाज़ साफ़ नहीं आई। कृपया दोबारा प्रयास करें।";
+            };
+            recognition.start();
+        }
+
+        function shareNotes() {
+            const notes = document.getElementById('notepad-text').value;
+            if (!notes) {
+                statusDiv.innerText = "त्रुटि: शेयर करने के लिए पहले कुछ बोलकर नोट लिखें।";
+                return;
+            }
+            window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(notes)}`, '_blank');
+        }
+
+        // ---- २. व्हाट्सएप डायरेक्ट लॉजिक ----
+        function openWhatsAppDirect() {
+            let num = document.getElementById('whatsapp-number').value.trim();
+            if (!num) {
+                statusDiv.innerText = "त्रुटि: कृपया नंबर डालें।";
+                return;
+            }
+            // अगर यूजर 91 लगाना भूल जाए
+            if (num.length === 10) num = "91" + num;
+            statusDiv.innerText = "व्हाट्सएप चैट खोली जा रही है...";
+            window.open(`https://api.whatsapp.com/send?phone=${num}`, '_blank');
+        }
+
+        // ---- ३. बैटरी और नेटवर्क स्टेटस ----
+        async function checkDeviceStatus() {
+            let batteryMsg = "";
+            let networkMsg = navigator.onLine ? "आपका फोन इंटरनेट से जुड़ा हुआ है (ऑनलाइन है)।" : "आपका फोन इंटरनेट से नहीं जुड़ा है (ऑफलाइन है)।";
+            
             try {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (navigator.getBattery) {
+                    const battery = await navigator.getBattery();
+                    let level = Math.round(battery.level * 100);
+                    let charging = battery.charging ? "चार्जर कनेक्टेड है और बैटरी चार्ज हो रही है।" : "चार्जर कनेक्टेड नहीं है।";
+                    batteryMsg = `आपकी बैटरी इस समय ${level} प्रतिशत है और ${charging}`;
+                } else {
+                    batteryMsg = "बैटरी की स्थिति इस डिवाइस पर समर्थित नहीं है।";
+                }
+            } catch (e) {
+                batteryMsg = "बैटरी स्टेटस जानने में असमर्थ।";
+            }
+            
+            statusDiv.innerText = `स्थिति: ${batteryMsg} और ${networkMsg}`;
+        }
+
+        // ---- ४. टॉर्च कंट्रोल लॉजिक ----
+        let track = null;
+        async function toggleFlashlight(status) {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                track = stream.getVideoTracks()[0];
+                const capabilities = track.getCapabilities();
                 
-                // इस बार सामान्य सेटिंग्स रखी हैं ताकि माइक ओवर-सेंसिटिव न हो
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                microphone = audioCtx.createMediaStreamSource(stream);
-                analyser = audioCtx.createAnalyser();
-                microphone.connect(analyser);
-                analyser.fftSize = 256; // तेज़ प्रोसेसिंग के लिए बफ़र छोटा किया
-                
-                statusDiv.innerText = "स्थिति: माइक तैयार है। अब टेस्ट शुरू करें और दूसरा बटन दबाएं।";
+                if (capabilities.torch) {
+                    await track.applyConstraints({ advanced: [{ torch: status }] });
+                    statusDiv.innerText = status ? "टॉर्च सफलतापूर्वक ऑन हो गई है।" : "टॉर्च बंद कर दी गई है।";
+                    if (!status) { track.stop(); }
+                } else {
+                    statusDiv.innerText = "त्रुटि: आपके डिवाइस में फ्लैशलाइट कंट्रोल सपोर्ट नहीं है।";
+                }
             } catch (err) {
-                statusDiv.innerText = "त्रुटि: माइक एक्सेस नहीं मिला।";
+                statusDiv.innerText = "त्रुटि: कैमरे या टॉर्च की अनुमति नहीं मिली।";
             }
         }
 
-        function startSonarScan() {
-            if (!audioCtx || !analyser) {
-                statusDiv.innerText = "त्रुटि: कृपया पहले १ नंबर बटन दबाकर माइक ऑन करें।";
+        // ---- ५. टॉकबैक टेक्स्ट क्लीनर ----
+        function cleanTextForTalkback() {
+            let txt = document.getElementById('dirty-text').value;
+            if (!txt) {
+                statusDiv.innerText = "त्रुटि: पहले बॉक्स में टेक्स्ट डालें।";
                 return;
             }
+            // विशेष सिम्बल्स को हटाना ताकि टॉकबैक साफ़ पढ़े
+            let cleaned = txt.replace(/[#\*@\$\^&_+\=\[\]\{\};:"\\|<>\/~`]/g, " ");
+            cleaned = cleaned.replace(/\s+/g, " ").trim(); // एक्स्ट्रा स्पेस हटाना
+            statusDiv.innerText = "साफ़ किया हुआ टेक्स्ट: " + cleaned;
+            document.getElementById('dirty-text').value = cleaned;
+        }
 
-            statusDiv.innerText = "स्थिति: ध्वनि तरंगें भेजी जा रही हैं...";
+        // ---- ६. ५० अनमोल सुविचार लिस्ट ----
+        const thoughts = [
+            "सफलता का कोई शॉर्टकट नहीं होता, इसके लिए कड़ी मेहनत ही एकमात्र रास्ता है।",
+            "हर छोटा बदलाव बड़ी कामयाबी का हिस्सा होता है, प्रयास करते रहिए।",
+            "विश्वास वह शक्ति है जिससे उजड़ी हुई दुनिया में भी प्रकाश किया जा सकता है।",
+            "यदि आप कुछ सोच सकते हैं, तो निश्चित रूप से आप उसे कर भी सकते हैं।",
+            "आज का कठिन परिश्रम कल के सुनहरे भविष्य का निर्माण करता है।",
+            "ज्ञान से बड़ा कोई धन नहीं है, और अज्ञानता से बड़ा कोई अंधकार नहीं।",
+            "समय और समझ दोनों एक साथ खुशकिस्मत लोगों को ही मिलते हैं।",
+            "जीतने का मज़ा तब आता है, जब सभी लोग आपके हारने का इंतज़ार कर रहे हों।",
+            "मंजिल मिले न मिले यह तो मुकद्दर की बात है, हम कोशिश भी न करें यह गलत बात है।",
+            "धैर्य रखना कड़वा हो सकता है, लेकिन इसका फल हमेशा मीठा होता है।",
+            "जो मुस्कुरा रहा है उसे दर्द ने पाला होगा, जो चल रहा है उसके पाँव में छाला होगा।",
+            "आपकी आज की मेहनत आपके कल के सपनों की चाबी है।",
+            "बड़ा सोचो, जल्दी सोचो, आगे सोचो, क्योंकि विचारों पर किसी का एकाधिकार नहीं है।",
+            "शिक्षा सबसे शक्तिशाली हथियार है जिसका उपयोग आप दुनिया को बदलने के लिए कर सकते हैं।",
+            "अगर आप परिस्थितियों को नहीं बदल सकते, तो अपनी मनःस्थिति बदलिए, सब ठीक हो जाएगा।",
+            "भविष्य इस बात पर निर्भर करता है कि आप आज क्या कर रहे हैं।",
+            "गलतियाँ इस बात का सबूत हैं कि आप प्रयास कर रहे हैं।",
+            "यदि आप सूरज की तरह चमकना चाहते हैं, तो पहले सूरज की तरह जलना सीखें।",
+            "महानता कभी न गिरने में नहीं है, बल्कि हर बार गिरकर उठ जाने में है।",
+            "सकारात्मक सोच आपके जीवन को एक नई और सुंदर दिशा देती है।",
+            "रास्ते कभी खत्म नहीं होते, बस लोग हिम्मत हार जाते हैं।",
+            "ईमानदारी एक महंगा शौक है, जिसे हर कोई वहन नहीं कर सकता।",
+            "दूसरों से ईर्ष्या करने से हमारा खुद का मानसिक सुकून नष्ट हो जाता है।",
+            "सच्चा ज्ञान हमें विनम्र बनाता है, अहंकार से दूर रखता है।",
+            "कठिन परिस्थितियाँ मजबूत इंसानों का निर्माण करती हैं।",
+            "जो लोग बहानों की तलाश करते हैं, वे सफलता के रास्तों से दूर हो जाते हैं।",
+            "वाणी में मधुरता हो तो पराए भी अपने बन जाते हैं।",
+            "खुद पर भरोसा रखो, तुम जितना सोचते हो उससे कहीं अधिक मजबूत हो।",
+            "परिवर्तन ही संसार का नियम है, कल जो किसी और का था, आज तुम्हारा है।",
+            "क्रोध में बोला गया एक कठोर शब्द, जीवन भर के रिश्तों में खटास ला सकता है।",
+            "शांति की शुरुआत एक छोटी सी मुस्कान से होती है।",
+            "कर्म करते रहिए, क्योंकि समय का पहिया कभी किसी के लिए नहीं रुकता।",
+            "सपने वो नहीं जो हम सोते हुए देखते हैं, सपने वो हैं जो हमें सोने नहीं देते।",
+            "जिस व्यक्ति ने अपनी आदतें बदल लीं, उसका कल बदल जाएगा।",
+            "सच्चा मित्र वही है जो संकट के समय आपका साथ न छोड़े।",
+            "भीड़ का हिस्सा बनना आसान है, लेकिन भीड़ जिसके लिए खड़ी हो वह बनना महान है।",
+            "अनुभव एक बेहतरीन शिक्षक है, जो हमें जीवन की वास्तविक पाठशाला सिखाता है।",
+            "निराशा एक बंद दरवाज़ा है, जबकि आशा असीमित संभावनाओं का आसमान।",
+            "चुप रहना और मुस्कुराना, दो शक्तिशाली हथियार हैं।",
+            "जीवन का वास्तविक उद्देश्य दूसरों की सेवा और भलाई करना है।",
+            "दुआएं कभी खाली नहीं जातीं, बस सही समय पर कुबूल होती हैं।",
+            "साहस का मतलब डर का न होना नहीं, बल्कि डर पर विजय पाना है।",
+            "संतुष्टि ही सबसे बड़ा धन है, जो इंसान को अमीर बनाती है।",
+            "वक्त दिखाई नहीं देता, लेकिन बहुत कुछ दिखा जाता है।",
+            "मेहनत का फल और समस्या का हल, देर से ही सही लेकिन मिलता ज़रूर है।",
+            "अच्छी किताबें और अच्छे लोग तुरंत समझ में नहीं आते, उन्हें पढ़ना पड़ता है।",
+            "जो बदलता है वही आगे बढ़ता है, ठहरा हुआ पानी तो सड़ जाता है।",
+            "अहंकार ज्ञान का सबसे बड़ा दुश्मन है, इससे सदा दूर रहें।",
+            "छोटी-छोटी खुशियाँ ही जीवन को बड़ा और खूबसूरत बनाती हैं।",
+            "सच्ची सफलता आत्मिक शांति और संतोष में निहित है।"
+        ];
 
-            // बीप ध्वनि पैदा करना
-            let oscillator = audioCtx.createOscillator();
-            let playGain = audioCtx.createGain();
-            oscillator.type = 'sine';
-            oscillator.frequency.setValueAtTime(2000, audioCtx.currentTime); // 2kHz फ्रीक्वेंसी
-            
-            oscillator.connect(playGain);
-            playGain.connect(audioCtx.destination);
-            
-            oscillator.start();
-            playGain.gain.setValueAtTime(0.5, audioCtx.currentTime); // वॉल्यूम आधा किया ताकि कान को न चुभे
-            playGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.03);
-            oscillator.stop(audioCtx.currentTime + 0.04);
-
-            setTimeout(() => {
-                let bufferLength = analyser.frequencyBinCount;
-                let dataArray = new Uint8Array(bufferLength);
-                analyser.getByteFrequencyData(dataArray);
-                
-                // लाइव गूँज का कुल वॉल्यूम निकालना
-                let totalVolume = 0;
-                for (let i = 0; i < bufferLength; i++) {
-                    totalVolume += dataArray[i];
-                }
-                let averageVolume = totalVolume / bufferLength;
-
-                // --- नया ऑटो-स्केल कैलिब्रेशन फॉर्मूला ---
-                // अगर माइक दबाने या सन्नाटे में वैल्यू बहुत कम (जैसे 2 से कम) है तो इसे सीधा 10% बताएगा
-                let detectedLevel = 10;
-
-                if (averageVolume > 1.5) {
-                    // वॉल्यूम के आधार पर २०% से १००% के बीच डायनामिक स्केल
-                    // यह फॉर्मूला अब ओवर-फ्लो नहीं होगा
-                    let rawLevel = 10 + (averageVolume * 1.8); 
-                    detectedLevel = Math.round(rawLevel / 5) * 5;
-                }
-
-                // सीमाओं को सुरक्षित करना
-                if (detectedLevel > 100) detectedLevel = 100;
-                if (detectedLevel < 10) detectedLevel = 10;
-
-                // परिणाम सुनाना
-                if (detectedLevel <= 10) {
-                    statusDiv.innerText = `चेतावनी: पानी बहुत कम है, केवल ${detectedLevel} प्रतिशत है। कृपया पानी भरें।`;
-                } else {
-                    statusDiv.innerText = `स्थिति: ध्वनि सेंसर के अनुसार कूलर में ${detectedLevel} प्रतिशत पानी उपलब्ध है।`;
-                }
-
-            }, 350); 
+        function getRandomThought() {
+            const randomIndex = Math.floor(Math.random() * thoughts.length);
+            const selectedThought = thoughts[randomIndex];
+            statusDiv.innerText = "सुविचार: " + selectedThought;
         }
     </script>
 </body>
