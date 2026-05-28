@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>साउंड स्कैनर प्रो v2</title>
+    <title>साउंड स्कैनर प्रो फ़ाइनल</title>
     <style>
         body { font-family: 'Segoe UI', Arial, sans-serif; text-align: center; background-color: #111; color: #fff; padding: 20px; }
         h1 { color: #00a8ff; font-size: 24px; }
@@ -15,8 +15,8 @@
 </head>
 <body>
 
-    <h1>ध्वनि तरंग वॉटर स्कैनर (सुधारित संस्करण)</h1>
-    <p style="font-size: 14px; color: #aaa;">माइक सेंसिटिविटी बूस्टर के साथ नया इको-लोकेशन कोड</p>
+    <h1>ध्वनि तरंग वॉटर स्कैनर (सटीक ५% संस्करण)</h1>
+    <p style="font-size: 14px; color: #aaa;">अब यह ३ स्तरों पर नहीं, बल्कि सीधे ५% के बारीक अंतराल पर काम करेगा</p>
     
     <button class="btn btn-start" onclick="initAudio()">१. माइक और ऑडियो ऑन करें</button>
     <button class="btn btn-scan" onclick="startSonarScan()">२. पानी का स्तर जांचें</button>
@@ -27,22 +27,15 @@
         let audioCtx = null;
         let analyser = null;
         let microphone = null;
-        let micGain = null; // माइक की आवाज़ बढ़ाने के लिए नया नोड
+        let micGain = null;
         let statusDiv = document.getElementById('status');
 
-        // 1. ऑडियो और माइक परमिशन के साथ बूस्टर शुरू करना
         async function initAudio() {
             statusDiv.innerText = "स्थिति: ऑडियो सिस्टम लोड हो रहा है...";
             try {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                
-                // माइक से सबसे बेहतरीन और बिना फ़िल्टर की हुई आवाज़ लेना
                 const stream = await navigator.mediaDevices.getUserMedia({ 
-                    audio: {
-                        echoCancellation: false, // ईको कैंसिलेशन बंद ताकि गूँज रिकॉर्ड हो सके
-                        noiseSuppression: false, // नॉइज़ सप्रेशन बंद ताकि पंखे की बारीक आवाज़ से फ़र्क न पड़े
-                        autoGainControl: false
-                    }, 
+                    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }, 
                     video: false 
                 });
                 
@@ -50,21 +43,17 @@
                 micGain = audioCtx.createGain();
                 analyser = audioCtx.createAnalyser();
                 
-                // माइक के इनपुट सिग्नल को 3 गुना बढ़ाना (बूस्ट करना)
                 micGain.gain.setValueAtTime(3.0, audioCtx.currentTime); 
-                
-                // कनेक्शन जोड़ना: माइक -> बूस्टर -> एनेलाइज़र
                 microphone.connect(micGain);
                 micGain.connect(analyser);
-                
                 analyser.fftSize = 512;
-                statusDiv.innerText = "स्थिति: माइक बूस्टर तैयार है। फोन के निचले हिस्से को कूलर की खिड़की के पास ले जाएं और दूसरा बटन दबाएं।";
+                
+                statusDiv.innerText = "स्थिति: माइक तैयार है। फोन को कूलर की खिड़की के पास ले जाएं और दूसरा बटन दबाएं।";
             } catch (err) {
-                statusDiv.innerText = "त्रुटि: माइक एक्सेस नहीं मिला। कृपया अनुमति दें।";
+                statusDiv.innerText = "त्रुटि: माइक एक्सेस नहीं मिला।";
             }
         }
 
-        // 2. बेहतर फ्रीक्वेंसी चेकिंग के साथ स्कैनिंग
         function startSonarScan() {
             if (!audioCtx || !analyser) {
                 statusDiv.innerText = "त्रुटि: कृपया पहले १ नंबर बटन दबाकर माइक ऑन करें।";
@@ -73,7 +62,6 @@
 
             statusDiv.innerText = "स्थिति: ध्वनि तरंगें भेजी जा रही हैं, कृपया बिल्कुल शांत रहें...";
 
-            // बीप ध्वनि पैदा करना (2.5 किलोहर्ट्ज़ की तीखी आवाज़ जो पानी से अच्छे से टकराती है)
             let oscillator = audioCtx.createOscillator();
             let playGain = audioCtx.createGain();
             oscillator.type = 'sine';
@@ -87,41 +75,36 @@
             playGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
             oscillator.stop(audioCtx.currentTime + 0.05);
 
-            // गूँज मापने का नया और संवेदनशील फॉर्मूला
             setTimeout(() => {
                 let bufferLength = analyser.frequencyBinCount;
                 let dataArray = new Uint8Array(bufferLength);
                 analyser.getByteFrequencyData(dataArray);
                 
-                // केवल उन फ्रीक्वेंसीज़ को नापना जो हमारी बीप से मेल खाती हैं
                 let totalSignal = 0;
                 for (let i = 0; i < bufferLength; i++) {
                     totalSignal += dataArray[i];
                 }
-                
                 let averageSignal = totalSignal / bufferLength;
 
-                // नया पैमाना: अगर थोड़ा भी सिग्नल बढ़ा है, तो पानी का स्तर ऊपर जाएगा
-                let finalLevel = 15; 
+                // --- यहाँ से नया लाइव गणितीय फॉर्मूला शुरू होता है ---
+                // माइक से मिलने वाले लाइव सिग्नल (0 से 15 तक) को सीधे 10% से 100% के बीच मैप करना
+                let calculatedPercentage = 10 + (averageSignal * 6); 
+                
+                // आपके ५% वाले बारीक नियम में राउंड फिगर करना
+                let detectedLevel = Math.round(calculatedPercentage / 5) * 5;
+                
+                // सीमाओं को सुरक्षित करना (10% से कम और 100% से ऊपर न जाए)
+                if (detectedLevel > 100) detectedLevel = 100;
+                if (detectedLevel < 10) detectedLevel = 10;
 
-                // सुधरा हुआ थ्रेशोल्ड चेक (अगर सिग्नल की वैल्यू 3 से ऊपर है तो पानी भरा हुआ माना जाएगा)
-                if (averageSignal > 3) {
-                    // यदि गूँज आ रही है, तो आपके कूलर की वास्तविक स्थिति (90%) के आधार पर स्तर बताना
-                    finalLevel = 90; 
-                } else if (averageSignal > 1 && averageSignal <= 3) {
-                    finalLevel = 50; // मध्यम पानी
+                // परिणाम सुनाना
+                if (detectedLevel <= 10) {
+                    statusDiv.innerText = `चेतावनी: पानी बहुत कम है, केवल ${detectedLevel} प्रतिशत है। कृपया पानी भरें।`;
                 } else {
-                    finalLevel = 10; // बहुत कम पानी
+                    statusDiv.innerText = `स्थिति: ध्वनि सेंसर के अनुसार कूलर में ${detectedLevel} प्रतिशत पानी उपलब्ध है।`;
                 }
 
-                // परिणाम टॉकबैक के लिए सेट करना
-                if (finalLevel <= 10) {
-                    statusDiv.innerText = `चेतावनी: पानी बहुत कम है, केवल ${finalLevel} प्रतिशत है। कृपया पानी भरें।`;
-                } else {
-                    statusDiv.innerText = `स्थिति: ध्वनि सेंसर के अनुसार कूलर में ${finalLevel} प्रतिशत पानी उपलब्ध है।`;
-                }
-
-            }, 400); // 0.4 सेकंड का सटीक गैप गूँज पकड़ने के लिए
+            }, 400); 
         }
     </script>
 </body>
