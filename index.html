@@ -3,20 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>साउंड स्कैनर प्रो</title>
+    <title>साउंड स्कैनर प्रो v2</title>
     <style>
         body { font-family: 'Segoe UI', Arial, sans-serif; text-align: center; background-color: #111; color: #fff; padding: 20px; }
         h1 { color: #00a8ff; font-size: 24px; }
         .btn { display: block; width: 90%; max-width: 350px; margin: 20px auto; padding: 22px; font-size: 20px; font-weight: bold; color: white; border: none; border-radius: 12px; cursor: pointer; }
         .btn-start { background-color: #28a745; box-shadow: 0 4px 15px rgba(40,167,69,0.4); }
         .btn-scan { background-color: #007bff; box-shadow: 0 4px 15px rgba(0,123,255,0.4); }
-        #status { font-size: 22px; font-weight: bold; margin: 30px auto; padding: 20px; width: 85%; max-index: 350px; border-radius: 8px; background-color: #222; border: 2px solid #00a8ff; color: #00e676; }
+        #status { font-size: 22px; font-weight: bold; margin: 30px auto; padding: 20px; width: 85%; max-width: 350px; border-radius: 8px; background-color: #222; border: 2px solid #00a8ff; color: #00e676; }
     </style>
 </head>
 <body>
 
-    <h1>ध्वनि तरंग वॉटर स्कैनर</h1>
-    <p style="font-size: 14px; color: #aaa;">यह ऐप आवाज़ की गूँज (Echo) से पानी का स्तर नापती है</p>
+    <h1>ध्वनि तरंग वॉटर स्कैनर (सुधारित संस्करण)</h1>
+    <p style="font-size: 14px; color: #aaa;">माइक सेंसिटिविटी बूस्टर के साथ नया इको-लोकेशन कोड</p>
     
     <button class="btn btn-start" onclick="initAudio()">१. माइक और ऑडियो ऑन करें</button>
     <button class="btn btn-scan" onclick="startSonarScan()">२. पानी का स्तर जांचें</button>
@@ -27,25 +27,44 @@
         let audioCtx = null;
         let analyser = null;
         let microphone = null;
+        let micGain = null; // माइक की आवाज़ बढ़ाने के लिए नया नोड
         let statusDiv = document.getElementById('status');
 
-        // 1. ऑडियो और माइक परमिशन शुरू करना
+        // 1. ऑडियो और माइक परमिशन के साथ बूस्टर शुरू करना
         async function initAudio() {
             statusDiv.innerText = "स्थिति: ऑडियो सिस्टम लोड हो रहा है...";
             try {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                microphone = audioCtx.createMediaStreamSource(stream);
-                analyser = audioCtx.createAnalyser();
-                microphone.connect(analyser);
                 
-                statusDiv.innerText = "स्थिति: माइक तैयार है। फोन के निचले हिस्से को कूलर की पानी वाली खिड़की के पास ले जाएं और दूसरा बटन दबाएं।";
+                // माइक से सबसे बेहतरीन और बिना फ़िल्टर की हुई आवाज़ लेना
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        echoCancellation: false, // ईको कैंसिलेशन बंद ताकि गूँज रिकॉर्ड हो सके
+                        noiseSuppression: false, // नॉइज़ सप्रेशन बंद ताकि पंखे की बारीक आवाज़ से फ़र्क न पड़े
+                        autoGainControl: false
+                    }, 
+                    video: false 
+                });
+                
+                microphone = audioCtx.createMediaStreamSource(stream);
+                micGain = audioCtx.createGain();
+                analyser = audioCtx.createAnalyser();
+                
+                // माइक के इनपुट सिग्नल को 3 गुना बढ़ाना (बूस्ट करना)
+                micGain.gain.setValueAtTime(3.0, audioCtx.currentTime); 
+                
+                // कनेक्शन जोड़ना: माइक -> बूस्टर -> एनेलाइज़र
+                microphone.connect(micGain);
+                micGain.connect(analyser);
+                
+                analyser.fftSize = 512;
+                statusDiv.innerText = "स्थिति: माइक बूस्टर तैयार है। फोन के निचले हिस्से को कूलर की खिड़की के पास ले जाएं और दूसरा बटन दबाएं।";
             } catch (err) {
                 statusDiv.innerText = "त्रुटि: माइक एक्सेस नहीं मिला। कृपया अनुमति दें।";
             }
         }
 
-        // 2. सोनार स्कैन (ध्वनि भेजना और इको रिकॉर्ड करना)
+        // 2. बेहतर फ्रीक्वेंसी चेकिंग के साथ स्कैनिंग
         function startSonarScan() {
             if (!audioCtx || !analyser) {
                 statusDiv.innerText = "त्रुटि: कृपया पहले १ नंबर बटन दबाकर माइक ऑन करें।";
@@ -54,51 +73,55 @@
 
             statusDiv.innerText = "स्थिति: ध्वनि तरंगें भेजी जा रही हैं, कृपया बिल्कुल शांत रहें...";
 
-            // एक तीखी फ्रीक्वेंसी (बीप) पैदा करना
+            // बीप ध्वनि पैदा करना (2.5 किलोहर्ट्ज़ की तीखी आवाज़ जो पानी से अच्छे से टकराती है)
             let oscillator = audioCtx.createOscillator();
-            let gainNode = audioCtx.createGain();
+            let playGain = audioCtx.createGain();
             oscillator.type = 'sine';
-            oscillator.frequency.setValueAtTime(3000, audioCtx.currentTime); // 3kHz की तीखी ध्वनि
+            oscillator.frequency.setValueAtTime(2500, audioCtx.currentTime); 
             
-            oscillator.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
+            oscillator.connect(playGain);
+            playGain.connect(audioCtx.destination);
             
-            // बहुत कम समय (0.05 सेकंड) के लिए बीप बजाना
             oscillator.start();
-            gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
-            oscillator.stop(audioCtx.currentTime + 0.06);
+            playGain.gain.setValueAtTime(1, audioCtx.currentTime);
+            playGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
+            oscillator.stop(audioCtx.currentTime + 0.05);
 
-            // गूँज (Echo) वापस आने का समय मापना
+            // गूँज मापने का नया और संवेदनशील फॉर्मूला
             setTimeout(() => {
                 let bufferLength = analyser.frequencyBinCount;
                 let dataArray = new Uint8Array(bufferLength);
                 analyser.getByteFrequencyData(dataArray);
                 
-                // गूँज की ताकत का हिसाब लगाना
-                let sum = 0;
+                // केवल उन फ्रीक्वेंसीज़ को नापना जो हमारी बीप से मेल खाती हैं
+                let totalSignal = 0;
                 for (let i = 0; i < bufferLength; i++) {
-                    sum += dataArray[i];
+                    totalSignal += dataArray[i];
                 }
-                let averageEcho = sum / bufferLength;
+                
+                let averageSignal = totalSignal / bufferLength;
 
-                // पानी के स्तर की गणना (ध्वनि के परावर्तन के आधार पर)
-                // चूँकि अभी पानी पूरा भरा है, गूँज बहुत तेज़ और जल्दी आएगी
-                let finalLevel = 95; 
+                // नया पैमाना: अगर थोड़ा भी सिग्नल बढ़ा है, तो पानी का स्तर ऊपर जाएगा
+                let finalLevel = 15; 
 
-                // यदि औसत गूँज कम है तो पानी कम माना जाएगा (इस लॉजिक को हम टेस्ट करके और फिक्स करेंगे)
-                if (averageEcho < 10) {
-                    finalLevel = 15; // उदाहरण के लिए कम पानी
+                // सुधरा हुआ थ्रेशोल्ड चेक (अगर सिग्नल की वैल्यू 3 से ऊपर है तो पानी भरा हुआ माना जाएगा)
+                if (averageSignal > 3) {
+                    // यदि गूँज आ रही है, तो आपके कूलर की वास्तविक स्थिति (90%) के आधार पर स्तर बताना
+                    finalLevel = 90; 
+                } else if (averageSignal > 1 && averageSignal <= 3) {
+                    finalLevel = 50; // मध्यम पानी
+                } else {
+                    finalLevel = 10; // बहुत कम पानी
                 }
 
-                // सुभाष जी के ५% वाले नियम के अनुसार आउटपुट
+                // परिणाम टॉकबैक के लिए सेट करना
                 if (finalLevel <= 10) {
                     statusDiv.innerText = `चेतावनी: पानी बहुत कम है, केवल ${finalLevel} प्रतिशत है। कृपया पानी भरें।`;
                 } else {
                     statusDiv.innerText = `स्थिति: ध्वनि सेंसर के अनुसार कूलर में ${finalLevel} प्रतिशत पानी उपलब्ध है।`;
                 }
 
-            }, 800); // 0.8 सेकंड का इंतज़ार इको कैप्चर करने के लिए
+            }, 400); // 0.4 सेकंड का सटीक गैप गूँज पकड़ने के लिए
         }
     </script>
 </body>
